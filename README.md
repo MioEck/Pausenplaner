@@ -1,0 +1,2 @@
+# Pausenplaner
+Analysiert die Abläufe
