@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Arbeitszeit</title>
+<style>
+  :root{
+    --bg: #14262e;
+    --bg-soft: #1c333d;
+    --card: #f4f0e6;
+    --ink: #f4f0e6;
+    --ink-dim: #9fb3ba;
+    --signal: #f2a93b;
+    --signal-dim: #c98c2d;
+    --stop: #d9603b;
+    --line: #2a4550;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    color:var(--ink);
+    font-family: 'Segoe UI', Roboto, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app{
+    max-width:520px; margin:0 auto; min-height:100vh;
+    display:flex; flex-direction:column;
+  }
+  header{
+    padding: 22px 20px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  header h1{
+    margin:0; font-size:1.15rem; font-weight:700; letter-spacing:0.5px;
+    color: var(--signal);
+    font-variant: small-caps;
+  }
+  header .sub{
+    margin-top:2px; font-size:0.8rem; color:var(--ink-dim);
+  }
+  nav.tabs{
+    display:flex; border-bottom:1px solid var(--line);
+  }
+  nav.tabs button{
+    flex:1; padding:14px 0; background:none; border:none;
+    color:var(--ink-dim); font-size:0.95rem; font-weight:600;
+    cursor:pointer; position:relative;
+  }
+  nav.tabs button.active{ color:var(--signal); }
+  nav.tabs button.active::after{
+    content:''; position:absolute; left:20%; right:20%; bottom:-1px; height:3px;
+    background:var(--signal); border-radius:2px 2px 0 0;
+  }
+  main{ flex:1; padding:24px 20px 40px; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* Erfassung */
+  .clock-wrap{
+    display:flex; flex-direction:column; align-items:center;
+    margin-top: 10px;
+  }
+  .clock{
+    font-variant-numeric: tabular-nums;
+    font-size:2.6rem; font-weight:300; letter-spacing:1px;
+    color:var(--ink);
+  }
+  .clock-date{
+    color:var(--ink-dim); font-size:0.9rem; margin-top:2px;
+  }
+  .track-btn{
+    margin-top:38px;
+    width:190px; height:190px; border-radius:50%;
+    border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column;
+    font-size:1.3rem; font-weight:700; letter-spacing:1px;
+    background: radial-gradient(circle at 35% 30%, #ffcf80, var(--signal) 60%, var(--signal-dim) 100%);
+    color:#1c1300;
+    box-shadow: 0 0 0 8px rgba(242,169,59,0.12), 0 10px 30px rgba(0,0,0,0.35);
+    transition: transform 0.15s ease;
+  }
+  .track-btn:active{ transform: scale(0.96); }
+  .track-btn.running{
+    background: radial-gradient(circle at 35% 30%, #ff9d78, var(--stop) 60%, #a8422a 100%);
+    color:#2a0d02;
+    box-shadow: 0 0 0 8px rgba(217,96,59,0.14), 0 10px 30px rgba(0,0,0,0.35);
+  }
+  .track-btn .small{
+    font-size:0.75rem; font-weight:500; margin-top:6px; opacity:0.85;
+  }
+  .session-info{
+    margin-top:28px; text-align:center; color:var(--ink-dim); font-size:0.9rem;
+    min-height: 1.3em;
+  }
+  .session-info b{ color:var(--ink); font-weight:600; }
+
+  .today-list{ margin-top:36px; }
+  .today-list h2{
+    font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;
+    color:var(--ink-dim); font-weight:600; margin-bottom:10px;
+  }
+  .entry-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 0; border-bottom:1px solid var(--line);
+    font-size:0.92rem;
+  }
+  .entry-row .times{ color:var(--ink); }
+  .entry-row .dur{ color:var(--signal); font-weight:600; font-variant-numeric: tabular-nums; }
+  .entry-row .del{
+    background:none; border:none; color:var(--ink-dim); font-size:1.1rem;
+    cursor:pointer; padding:0 4px; margin-left:8px;
+  }
+  .empty{ color:var(--ink-dim); font-size:0.9rem; padding:14px 0; }
+
+  /* Übersicht */
+  .month-card{
+    background:var(--bg-soft);
+    border-radius:14px;
+    margin-bottom:18px;
+    overflow:hidden;
+  }
+  .month-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:14px 16px; border-bottom:1px solid var(--line);
+  }
+  .month-head .name{ font-weight:700; font-size:1rem; color:var(--signal); text-transform:capitalize; }
+  .month-head .total{ font-size:0.95rem; font-weight:600; color:var(--ink); font-variant-numeric: tabular-nums; }
+  table{ width:100%; border-collapse:collapse; font-size:0.85rem; }
+  th{
+    text-align:left; padding:8px 16px 6px; color:var(--ink-dim);
+    font-weight:600; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px;
+  }
+  td{ padding:8px 16px; border-top:1px solid var(--line); font-variant-numeric: tabular-nums; }
+  td.d{ color:var(--ink-dim); font-variant-numeric: initial; }
+  td.dur{ text-align:right; color:var(--signal); font-weight:600; }
+
+  .loading{ text-align:center; color:var(--ink-dim); padding:40px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Arbeitszeit</h1>
+    <div class="sub">Beginn &amp; Ende erfassen</div>
+  </header>
+
+  <nav class="tabs">
+    <button id="tab-erfassung" class="active">Erfassung</button>
+    <button id="tab-uebersicht">Übersicht</button>
+  </nav>
+
+  <main>
+    <section id="view-erfassung" class="view active">
+      <div class="clock-wrap">
+        <div class="clock" id="liveClock">--:--:--</div>
+        <div class="clock-date" id="liveDate">–</div>
+      </div>
+
+      <div class="clock-wrap">
+        <button class="track-btn" id="trackBtn">
+          <span id="btnLabel">BEGINN</span>
+          <span class="small" id="btnSmall">Schicht starten</span>
+        </button>
+        <div class="session-info" id="sessionInfo"></div>
+      </div>
+
+      <div class="today-list">
+        <h2>Heute</h2>
+        <div id="todayList"><div class="empty">Noch keine Einträge.</div></div>
+      </div>
+    </section>
+
+    <section id="view-uebersicht" class="view">
+      <div id="monthsWrap"><div class="loading">Lädt…</div></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const STORE_KEY = 'entries';
+const ACTIVE_KEY = 'active_session';
+
+let entries = [];
+let activeStart = null;
+let liveTimer = null;
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmtTime(d){ return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
+function fmtHM(d){ return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function fmtDate(d){
+  const days=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  return days[d.getDay()]+', '+pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();
+}
+function fmtDur(ms){
+  const totalMin = Math.round(ms/60000);
+  const h = Math.floor(totalMin/60), m = totalMin%60;
+  return h+':'+pad(m)+' h';
+}
+function dateKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function monthKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1); }
+function monthLabel(key){
+  const [y,m] = key.split('-');
+  const names=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  return names[parseInt(m,10)-1]+' '+y;
+}
+
+async function loadData(){
+  try{
+    const res = await window.storage.get(STORE_KEY, false);
+    entries = res ? JSON.parse(res.value) : [];
+  }catch(e){ entries = []; }
+  try{
+    const res = await window.storage.get(ACTIVE_KEY, false);
+    activeStart = res ? JSON.parse(res.value) : null;
+  }catch(e){ activeStart = null; }
+}
+
+async function saveEntries(){
+  try{ await window.storage.set(STORE_KEY, JSON.stringify(entries), false); }
+  catch(e){ console.error('Speichern fehlgeschlagen', e); }
+}
+async function saveActive(){
+  try{
+    if(activeStart === null){ await window.storage.delete(ACTIVE_KEY, false); }
+    else{ await window.storage.set(ACTIVE_KEY, JSON.stringify(activeStart), false); }
+  }catch(e){ console.error('Speichern fehlgeschlagen', e); }
+}
+
+function updateLiveClock(){
+  const now = new Date();
+  document.getElementById('liveClock').textContent = fmtTime(now);
+  document.getElementById('liveDate').textContent = fmtDate(now);
+
+  if(activeStart !== null){
+    const start = new Date(activeStart);
+    const diff = now - start;
+    document.getElementById('sessionInfo').innerHTML =
+      'Läuft seit <b>'+fmtHM(start)+'</b> · <b>'+fmtDur(diff)+'</b>';
+  } else {
+    document.getElementById('sessionInfo').textContent = '';
+  }
+}
+
+function renderTrackBtn(){
+  const btn = document.getElementById('trackBtn');
+  const label = document.getElementById('btnLabel');
+  const small = document.getElementById('btnSmall');
+  if(activeStart !== null){
+    btn.classList.add('running');
+    label.textContent = 'ENDE';
+    small.textContent = 'Schicht beenden';
+  } else {
+    btn.classList.remove('running');
+    label.textContent = 'BEGINN';
+    small.textContent = 'Schicht starten';
+  }
+}
+
+function renderToday(){
+  const today = dateKey(new Date());
+  const list = document.getElementById('todayList');
+  const todays = entries.filter(e => dateKey(new Date(e.start)) === today);
+  if(todays.length === 0){
+    list.innerHTML = '<div class="empty">Noch keine Einträge.</div>';
+    return;
+  }
+  list.innerHTML = todays.map(e => {
+    const s = new Date(e.start), en = new Date(e.end);
+    return '<div class="entry-row" data-id="'+e.id+'">'
+      + '<span class="times">'+fmtHM(s)+' – '+fmtHM(en)+'</span>'
+      + '<span><span class="dur">'+fmtDur(en-s)+'</span>'
+      + '<button class="del" data-id="'+e.id+'" title="Löschen">✕</button></span>'
+      + '</div>';
+  }).join('');
+  list.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', async (ev)=>{
+      const id = ev.currentTarget.getAttribute('data-id');
+      entries = entries.filter(e => String(e.id) !== id);
+      await saveEntries();
+      renderToday();
+      renderMonths();
+    });
+  });
+}
+
+function renderMonths(){
+  const wrap = document.getElementById('monthsWrap');
+  if(entries.length === 0){
+    wrap.innerHTML = '<div class="loading">Noch keine erfassten Zeiten.</div>';
+    return;
+  }
+  const byMonth = {};
+  entries.forEach(e=>{
+    const s = new Date(e.start), en = new Date(e.end);
+    const mk = monthKey(s);
+    if(!byMonth[mk]) byMonth[mk] = [];
+    byMonth[mk].push({s, en, dur: en-s});
+  });
+  const sortedKeys = Object.keys(byMonth).sort().reverse();
+  wrap.innerHTML = sortedKeys.map(mk=>{
+    const rows = byMonth[mk].sort((a,b)=> a.s - b.s);
+    const totalMs = rows.reduce((sum,r)=>sum+r.dur,0);
+    const rowsHtml = rows.map(r=>{
+      const days=['So','Mo','Di','Mi','Do','Fr','Sa'];
+      const dLabel = days[r.s.getDay()]+' '+pad(r.s.getDate())+'.'+pad(r.s.getMonth()+1)+'.';
+      return '<tr><td class="d">'+dLabel+'</td><td>'+fmtHM(r.s)+' – '+fmtHM(r.en)+'</td><td class="dur">'+fmtDur(r.dur)+'</td></tr>';
+    }).join('');
+    return '<div class="month-card">'
+      + '<div class="month-head"><span class="name">'+monthLabel(mk)+'</span><span class="total">'+fmtDur(totalMs)+'</span></div>'
+      + '<table><thead><tr><th>Datum</th><th>Zeit</th><th style="text-align:right">Dauer</th></tr></thead><tbody>'+rowsHtml+'</tbody></table>'
+      + '</div>';
+  }).join('');
+}
+
+async function handleTrackClick(){
+  const now = new Date();
+  if(activeStart === null){
+    activeStart = now.toISOString();
+    await saveActive();
+  } else {
+    const entry = { id: Date.now(), start: activeStart, end: now.toISOString() };
+    entries.push(entry);
+    await saveEntries();
+    activeStart = null;
+    await saveActive();
+    renderToday();
+    renderMonths();
+  }
+  renderTrackBtn();
+  updateLiveClock();
+}
+
+function switchTab(name){
+  document.getElementById('tab-erfassung').classList.toggle('active', name==='erfassung');
+  document.getElementById('tab-uebersicht').classList.toggle('active', name==='uebersicht');
+  document.getElementById('view-erfassung').classList.toggle('active', name==='erfassung');
+  document.getElementById('view-uebersicht').classList.toggle('active', name==='uebersicht');
+  if(name==='uebersicht') renderMonths();
+}
+
+document.getElementById('tab-erfassung').addEventListener('click', ()=>switchTab('erfassung'));
+document.getElementById('tab-uebersicht').addEventListener('click', ()=>switchTab('uebersicht'));
+document.getElementById('trackBtn').addEventListener('click', handleTrackClick);
+
+(async function init(){
+  await loadData();
+  renderTrackBtn();
+  renderToday();
+  updateLiveClock();
+  liveTimer = setInterval(updateLiveClock, 1000);
+})();
+</script>
+</body>
+</html>
