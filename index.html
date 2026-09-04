@@ -157,7 +157,7 @@
 <body>
 
 <header>
-  <h1>Pausenplaner <span style="font-size:0.7rem;color:var(--dim);font-weight:400;">v4.5</span></h1>
+  <h1>Pausenplaner <span style="font-size:0.7rem;color:var(--dim);font-weight:400;">v4.6</span></h1>
   <p>PDF hochladen → Startbahnhof/Endbahnhof + Linienzeiten erkennen → beste Pausenaufteilung berechnen</p>
 </header>
 
@@ -559,7 +559,7 @@ function simulate(segments){
 }
 
 function computeAndShow(p, commuteOut, commuteBack){
-  if(p.blocks && p.blocks.length > 2){
+  if(p.blocks && p.blocks.length >= 1){
     renderCompliance(p, commuteOut, commuteBack);
     return;
   }
