@@ -157,7 +157,7 @@
 <body>
 
 <header>
-  <h1>Pausenplaner <span style="font-size:0.7rem;color:var(--dim);font-weight:400;">v4.4</span></h1>
+  <h1>Pausenplaner <span style="font-size:0.7rem;color:var(--dim);font-weight:400;">v4.5</span></h1>
   <p>PDF hochladen → Startbahnhof/Endbahnhof + Linienzeiten erkennen → beste Pausenaufteilung berechnen</p>
 </header>
 
@@ -611,6 +611,59 @@ function computeAndShow(p, commuteOut, commuteBack){
   }
 
   renderResults(p, optionA, optionB);
+}
+
+function renderResults(p, a, b){
+  document.getElementById('resultCard').classList.remove('hidden');
+  const container = document.getElementById('results');
+  const aIsBetter = a.endClock <= b.endClock;
+  const needsA = a.endBreak > 0;
+
+  const plannedGap = p.gapSegments.reduce((x,y) => x+y, 0);
+  let gapNote = '';
+  if(plannedGap > 0){
+    if(plannedGap >= 45){
+      gapNote = `Die planmäßige Pause zwischen den Abschnitten (${plannedGap} min) reicht für sich genommen bereits als vollständige Pause (≥45 min).`;
+    } else if(plannedGap >= 15){
+      gapNote = `Die planmäßige Pause zwischen den Abschnitten (${plannedGap} min) zählt als erste Teilpause (≥15 min), reicht allein aber nicht als vollständige Pause.`;
+    } else {
+      gapNote = `Die planmäßige Pause zwischen den Abschnitten (${plannedGap} min) ist zu kurz (<15 min) und zählt rechtlich nicht als Teilpause.`;
+    }
+  } else {
+    gapNote = 'Zwischen den Linien-Abschnitten ist keine Pause eingeplant.';
+  }
+
+  let html = `<p style="color:var(--dim);font-size:0.85rem;margin-bottom:10px;">${gapNote}</p>`;
+
+  html += `<div class="option ${aIsBetter && needsA ? 'best' : ''}">
+    <h3>${a.label} ${aIsBetter ? '<span class="badge">Früher</span>' : ''}</h3>
+    ${a.endBreak > 0
+      ? `<p>Erforderliche Pause an ${p.endOrt} (${fmtTime(p.endTime)} Uhr): <strong>${a.endBreak} min</strong></p>`
+      : `<p>Keine zusätzliche Pause nötig.</p>`}
+    <div class="end">Feierabend ca. ${fmtTime(a.endClock)} Uhr</div>
+    <p>Abfahrt ab Firma: ${fmtTime(a.startClock)} Uhr</p>
+  </div>`;
+
+  html += `<div class="option ${!aIsBetter ? 'best' : ''}">
+    <h3>${b.label} ${!aIsBetter ? '<span class="badge">Früher</span>' : ''}</h3>
+    <p>45 min Pause direkt nach Ankunft in ${p.startOrt}, vor Linienbeginn (${fmtTime(p.startTime)} Uhr).</p>
+    ${b.extraEndBreak > 0 ? `<p>Zusätzlich am Ende nötig: ${b.extraEndBreak} min.</p>` : `<p>Am Ende keine weitere Pause nötig.</p>`}
+    <div class="end">Feierabend ca. ${fmtTime(b.endClock)} Uhr</div>
+    <p>Abfahrt ab Firma: ${fmtTime(b.startClock)} Uhr (45 min früher als Option A)</p>
+  </div>`;
+
+  if(!needsA){
+    html += `<div class="option best"><h3>Keine Zusatzpause erforderlich</h3>
+      <p>Gesamte Fahrzeit (Anfahrt + Linie(n) + Rückfahrt) bleibt unter 4:30 h.</p>
+      <div class="end">Feierabend ca. ${fmtTime(a.endClock)} Uhr</div></div>`;
+  } else {
+    html += `<p style="color:var(--dim);font-size:0.8rem;margin-top:4px;">
+      Empfehlung: ${a.endClock < b.endClock ? 'Pause am Ende reicht bereits und ist am günstigsten.' :
+      (b.endClock < a.endClock ? 'Frühere Pause vor Linienstart spart Zeit am Ende, dafür ' + (b.startClock < a.startClock ? (a.startClock - b.startClock) : 0) + ' min früherer Start.' : 'Beide Varianten enden gleich.')}
+    </p>`;
+  }
+
+  container.innerHTML = html;
 }
 
 // ---------- Allgemeine Prüfung für mehr als 2 Linien-Blöcke ----------
